@@ -9,7 +9,20 @@ import (
 	"os"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/joho/godotenv"
 )
+
+func GetEnvVariable(key string) string {
+
+	// load .env file
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	return os.Getenv(key)
+}
 
 func main() {
 	client, err := docker.NewClientFromEnv()
@@ -55,10 +68,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	nameImage := GetEnvVariable("DOCKER_HUB_REPOSITORY") + "/hello-world"
 	dockerFileTarReader := bytes.NewReader(buf.Bytes())
 	opts := docker.BuildImageOptions{
 		Context:      ctx,
-		Name:         "hello-world",
+		Name:         nameImage,
 		Dockerfile:   dockerfile,
 		InputStream:  dockerFileTarReader,
 		OutputStream: bytes.NewBuffer(nil),
@@ -68,6 +82,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Running image
 	portBindings := map[docker.Port][]docker.PortBinding{
 		"80/tcp": {{HostIP: "0.0.0.0", HostPort: "8080"}}}
 
@@ -82,7 +97,7 @@ func main() {
 
 	createContConf := docker.Config{
 		ExposedPorts: exposedCadvPort,
-		Image:        "hello-world:latest",
+		Image:        nameImage,
 	}
 
 	optsContainer := docker.CreateContainerOptions{
@@ -96,6 +111,21 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := client.StartContainerWithContext(container.ID, nil, ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	// Push image
+	repository, tag := docker.ParseRepositoryTag(nameImage)
+	optsPushImage := docker.PushImageOptions{
+		Name: repository,
+		Tag:  tag,
+	}
+	err = client.PushImage(optsPushImage,
+		docker.AuthConfiguration{
+			Username: GetEnvVariable("USERNAME_DOCKER_HUB"),
+			Password: GetEnvVariable("PASSWORD_DOCKER_HUB"),
+		})
+	if err != nil {
 		log.Fatal(err)
 	}
 }
