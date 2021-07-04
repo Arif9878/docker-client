@@ -68,6 +68,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//Build Image
 	nameImage := GetEnvVariable("DOCKER_HUB_REPOSITORY") + "/hello-world"
 	dockerFileTarReader := bytes.NewReader(buf.Bytes())
 	opts := docker.BuildImageOptions{
@@ -82,7 +83,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Running image
+	// Running Image
 	portBindings := map[docker.Port][]docker.PortBinding{
 		"80/tcp": {{HostIP: "0.0.0.0", HostPort: "8080"}}}
 
@@ -114,7 +115,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Push image
+	// Push Image
 	repository, tag := docker.ParseRepositoryTag(nameImage)
 	optsPushImage := docker.PushImageOptions{
 		Name: repository,
